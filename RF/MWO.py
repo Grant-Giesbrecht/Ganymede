@@ -26,16 +26,29 @@ mwUT_DBOnlyPower = 18
 mwUT_WattsOnlyPower = 19
 mwUT_TextOnly = 20
 
-def printGoals(awrde, indent=""):
+def printOptVars(awrde, indent="", rel_indent="  "):
+	''' Print all optimization variables '''
+
+	for idx in range(1, awrde.Project.Optimizer.Variables.Count + 1):
+		print(f"{indent}Variable {idx}:")
+		print(f"{indent}{rel_indent}Name: {awrde.Project.Optimizer.Variables.Item(idx).Name}")
+		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Enabled}")
+		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Constrained}")
+		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Maximum}")
+		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Minimum}")
+		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Nominal}")
+		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Step}")
+
+def printGoals(awrde, indent="", rel_indent="  "):
     ''' Print all optimization goals in the MWO object `awrde`. '''
-    
+
     for idx in range(1, awrde.Project.OptGoals.Count + 1):
-        print(f"Goal {idx}")
-        printGoal(awrde, idx, "    ")
+        print(f"{indent}Goal {idx}:")
+        printGoal(awrde, idx, f"{indent}{rel_indent}")
 
 def printGoal(awrde, idx, indent=""):
     '''Print the goal in index `idx` in the MWO object `awrde`. '''
-    
+
     print(f"{indent}Circuit: {awrde.Project.OptGoals.Item(idx).CircuitName}")
     print(f"{indent}Cost: {awrde.Project.OptGoals.Item(idx).Cost}")
     print(f"{indent}Enable: {awrde.Project.OptGoals.Item(idx).Enable}")
@@ -50,5 +63,3 @@ def printGoal(awrde, idx, indent=""):
     print(f"{indent}xStop: {awrde.Project.OptGoals.Item(idx).xStop}")
     print(f"{indent}yStart: {awrde.Project.OptGoals.Item(idx).yStart}")
     print(f"{indent}yStop: {awrde.Project.OptGoals.Item(idx).yStop}")
-    
-    
