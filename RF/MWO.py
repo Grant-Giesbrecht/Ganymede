@@ -63,3 +63,51 @@ def printGoal(awrde, idx, indent=""):
     print(f"{indent}xStop: {awrde.Project.OptGoals.Item(idx).xStop}")
     print(f"{indent}yStart: {awrde.Project.OptGoals.Item(idx).yStart}")
     print(f"{indent}yStop: {awrde.Project.OptGoals.Item(idx).yStop}")
+
+
+def runOptimizer(awrde):
+
+	if awrde.Project.Optimizer.Running:
+		print("Cannot start optimzier because it is already running!\nAborting.")
+		sys.exit()
+
+	awrde.Project.Optimizer.Start()
+
+	st = time.time()
+	while awrde.Project.Optimizer.Running:
+
+		num_iter = str(awrde.Project.Optimizer.MaxIterations)
+		width = len(num_iter)
+
+		print(f"\r*** OPTIMIZER RUNNING *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(awrde.Project.Optimizer.Iteration).zfill(width)}/{num_iter})", end="")
+		time.sleep(0.1)
+
+	et = time.time()
+	print(f"\r*** OPTIMIZER FINISHED *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(awrde.Project.Optimizer.Iteration).zfill(width)}/{awrde.Project.Optimizer.MaxIterations})")
+
+def updateOptFreq(awrde, f, idx=1, delta=1):
+
+	print(f"-> Changing frequency to {f/1e9} GHz")
+
+	# Change project frequencies (b/c otherwise optimizer will run every freq)
+	awrde.Project.Frequencies.Clear()
+	awrde.Project.Frequencies.AddMultiple([f])
+
+	# Change optimizer goal frequency
+	awrde.Project.OptGoals(idx).xStart = f - delta
+	awrde.Project.OptGoals(idx).xStop = f + delta
+
+def saveOptResults(awrde, data, g):
+
+	# Create output dictionary
+	nd = dict()
+
+	# Scan over each optimization variable and save to dictionary
+	for idx in range(1, awrde.Project.Optimizer.Variables.Count + 1):
+		nd[awrde.Project.Optimizer.Variables.Item(idx).Name] = awrde.Project.Optimizer.Variables.Item(idx).Nominal
+
+	# Scan over each value in graph and save to dictionary
+	for idx in range(1, g.Measurements.Count + 1):
+		nd[g.Measurements.Item(idx).Name] = g.Measurements.Item(idx).TraceValues(1)
+
+	data.append(nd)

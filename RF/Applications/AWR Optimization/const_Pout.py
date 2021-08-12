@@ -28,27 +28,9 @@ arg_min = .001
 ################################ DEFINE FUNCTIONS ##############################
 
 
-def runOptimizer(awrde):
 
-	if awrde.Project.Optimizer.Running:
-		print("Cannot start optimzier because it is already running!\nAborting.")
-		sys.exit()
 
-	awrde.Project.Optimizer.Start()
-
-	st = time.time()
-	while awrde.Project.Optimizer.Running:
-
-		num_iter = str(awrde.Project.Optimizer.MaxIterations)
-		width = len(num_iter)
-
-		print(f"\r*** OPTIMIZER RUNNING *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(awrde.Project.Optimizer.Iteration).zfill(width)}/{num_iter})", end="")
-		time.sleep(0.1)
-
-	et = time.time()
-	print(f"\r*** OPTIMIZER FINISHED *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(awrde.Project.Optimizer.Iteration).zfill(width)}/{awrde.Project.Optimizer.MaxIterations})")
-
-def updateFreq(awrde, f, idx=1, delta=1):
+def updateOptFreq(awrde, f, idx=1, delta=1):
 
 	print(f"-> Changing frequency to {f/1e9} GHz")
 
