@@ -1,2 +1,2 @@
-# PyAWR
-Python module to help with AWR Scripting
+# Ganymede
+Python module to help with various science and engineering applications
