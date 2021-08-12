@@ -7,6 +7,7 @@ import sys
 import time
 import timeit
 from datetime import datetime
+import win32com.client
 
 ############################# CONFIGURATION OPTIONS ############################
 
@@ -25,50 +26,18 @@ gamma_min = .001
 arg_max = 360
 arg_min = .001
 
-################################ DEFINE FUNCTIONS ##############################
-
-
-
-
-def updateOptFreq(awrde, f, idx=1, delta=1):
-
-	print(f"-> Changing frequency to {f/1e9} GHz")
-
-	# Change project frequencies (b/c otherwise optimizer will run every freq)
-	awrde.Project.Frequencies.Clear()
-	awrde.Project.Frequencies.AddMultiple([f])
-
-	# Change optimizer goal frequency
-	awrde.Project.OptGoals(idx).xStart = f - delta
-	awrde.Project.OptGoals(idx).xStop = f + delta
-
-def saveOptResults(awrde, data, g):
-
-	# Create output dictionary
-	nd = dict()
-
-	# Scan over each optimization variable and save to dictionary
-	for idx in range(1, awrde.Project.Optimizer.Variables.Count + 1):
-		nd[awrde.Project.Optimizer.Variables.Item(idx).Name] = awrde.Project.Optimizer.Variables.Item(idx).Nominal
-
-	# Scan over each value in graph and save to dictionary
-	for idx in range(1, g.Measurements.Count + 1):
-		nd[g.Measurements.Item(idx).Name] = g.Measurements.Item(idx).TraceValues(1)
-
-	data.append(nd)
 
 ############################# INITIALIZE CONNECTION ############################
 
 # Initialize connection to Microwave Office
-import win32com.client
 awrde = win32com.client.Dispatch("MWOApp.MWOffice")
 
+# Check that schematic exists
 if not awrde.Project.Schematics.Exists(schema_name):
 	print(f"Cannot find schematic '{schema_name}' needed for sweep.\n\nAborting.")
 	sys.exit()
 else:
 	print(f"-> Found schematic '{schema_name}'.")
-
 
 
 ############################# CONFIGURE OPTIMIZER ##############################
