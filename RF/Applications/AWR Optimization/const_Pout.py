@@ -14,7 +14,7 @@ from ganymede import *
 
 schema_name = "SweepSchema_3053_4x100"
 plot_data_graph_name = "Script Values Plot";
-freqs = np.linspace(8e9, 12e9, 5, endpoint=True);
+freqs = np.linspace(8e9, 12e9, 25, endpoint=True);
 scan_name_prefix = "3053_4x100"
 
 max_opt_iter = 300
