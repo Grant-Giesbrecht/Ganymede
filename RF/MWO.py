@@ -1,3 +1,6 @@
+import time
+from pyddf import *
+
 # mwOptGoalType
 mwOGT_Equals = 0
 mwOGT_LessThan = 1
@@ -73,6 +76,7 @@ def runOptimizer(awrde):
 
 	awrde.Project.Optimizer.Start()
 
+	width = 0
 	st = time.time()
 	while awrde.Project.Optimizer.Running:
 
@@ -111,3 +115,52 @@ def saveOptResults(awrde, data, g):
 		nd[g.Measurements.Item(idx).Name] = g.Measurements.Item(idx).TraceValues(1)
 
 	data.append(nd)
+
+def sweepdict_to_ddf(dl):
+
+	ddf = DDFIO()
+
+	# Check for empty list
+	if len(dl) < 1:
+		return ddf
+
+	# Check that is an array of dictionaries
+	if type(dl[0]) is not dict:
+		raise ValueError("Input must be an array of dictionaries")
+
+	# Get keys
+	keys = list(dl[0].keys())
+
+	# Check that all elements have the same keys
+	for d in dl:
+		if keys != list(d.keys()):
+			raise ValueError("Input list of dictionaries must all have the same keys")
+	print(f"Keys: {d.keys()}")
+
+	# Initialize interim dictionary
+	interim = {key: [] for key in keys}
+	interim["freq"] = []
+
+	# Scan over each input dictionary
+	for d in dl:
+
+		allow_f = True
+
+		# Scan over each key
+		for k in keys:
+
+			if type(d[k]) == tuple: # If tuple, save first param as freq (but only once for all tuples), second as data for key
+				if allow_f:
+					interim["freq"].append(d[k][0][0])
+					allow_f = False
+				interim[k].append(d[k][0][1])
+			else:
+				interim[k].append(d[k])
+
+	print(interim)
+
+	for k in list(interim.keys()):
+		if not ddf.add(interim[k], makeValidName(k), ""):
+			print(ddf.err())
+
+	return ddf
