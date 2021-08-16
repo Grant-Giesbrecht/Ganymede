@@ -18,21 +18,21 @@ freqs = np.linspace(8e9, 12e9, 25, endpoint=True);
 scan_name_prefix = "3053_4x100"
 
 max_opt_iter = 300
-weight_Pout = 1
+weight_Pout = 1000
 weight_PAE = 1
 
 Plevel_W = .2
 Ptol_W = .01
-target_PAE = 35
+target_PAE = 45
 
-Pmax = 20
-Pmin = 14
+Pmax = 19
+Pmin = 15
 gamma_max = 1
 gamma_min = .001
 arg_max = 360
 arg_min = .001
 
-
+header_notes = ""
 
 # Specify optimization variables
 vars = []
@@ -163,7 +163,30 @@ for f in freqs:
 ts = datetime.now().strftime("%d-%b-%Y %H%M")
 # np.save(f"scan_{scan_name_prefix}_{ts}.npy", data)
 
+#******************************* Save Data to DDF ******************************
 
 # Reformat data into nice shape
 ddf = sweepdict_to_ddf(data)
+
+# Add sweep configuration data
+ddf.add(max_opt_iter, "max_opt_iter", "Maximum number of optimizer iterations");
+ddf.add(weight_Pout, "W_Pout", "Pout optimizer weight")
+ddf.add(weight_PAE, "W_PAE", "PAE optimizer weight")
+ddf.add(Plevel_W, "target_Pout", "[W] Target Pout for the optimizer")
+ddf.add(Ptol_W, "tol_Pout", "[W] Tolerance for Pout in opt goal")
+ddf.add(target_PAE, "target_PAE", "[%] Target for PAE for the optimizer")
+ddf.add(Pmax, "Pmax", "[dBm] Max Pin the optimizer is permitted to try")
+ddf.add(Pmin, "Pmin", "[dBm] Min Pin the optimizer is permitted to try")
+ddf.add(gamma_max, "Gamma_max", "Maximum refl. coef. magnitude the optimizer is permitted to try")
+ddf.add(gamma_min, "Gamma_min", "Minimum refl. coef. magnitude the optimizer is permitted to try")
+ddf.add(arg_max, "Arg_max", "Maximum refl. coef. argument/angle the optimizer is permitted to try")
+ddf.add(arg_min, "Arg_min", "Minimum refl. coef. argument/angle the optimizer is permitted to try")
+ddf.add(ts, "timestamp", "Time when simulated sweep was completed")
+
+# Add header
+header_string = "Data saved from constant output power optimizer sweep. Created by `const_Pout.py`."
+if len(header_notes) > 0:
+	header_string = header_string + "\n\n" + header_notes;
+ddf.setHeader(header_string);
+
 ddf.save(f"scan_{scan_name_prefix}_{ts}.ddf")
