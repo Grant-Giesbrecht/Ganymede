@@ -161,7 +161,9 @@ for f in freqs:
 	saveOptResults(awrde, data, g)
 
 ts = datetime.now().strftime("%d-%b-%Y %H%M")
-np.save(f"scan_{scan_name_prefix}_{ts}.npy", data)
+# np.save(f"scan_{scan_name_prefix}_{ts}.npy", data)
 
 
 # Reformat data into nice shape
+ddf = sweepdict_to_ddf(data)
+ddf.save(f"scan_{scan_name_prefix}_{ts}.ddf")

@@ -89,7 +89,7 @@ def runOptimizer(awrde):
 	et = time.time()
 	print(f"\r*** OPTIMIZER FINISHED *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(awrde.Project.Optimizer.Iteration).zfill(width)}/{awrde.Project.Optimizer.MaxIterations})")
 
-def updateOptFreq(awrde, f, idx=1, delta=1):
+def updateOptFreq(awrde, f, idx=-1, delta=1):
 
 	print(f"-> Changing frequency to {f/1e9} GHz")
 
@@ -97,9 +97,16 @@ def updateOptFreq(awrde, f, idx=1, delta=1):
 	awrde.Project.Frequencies.Clear()
 	awrde.Project.Frequencies.AddMultiple([f])
 
-	# Change optimizer goal frequency
-	awrde.Project.OptGoals(idx).xStart = f - delta
-	awrde.Project.OptGoals(idx).xStop = f + delta
+	if idx != -1:
+		# Change optimizer goal frequency
+		awrde.Project.OptGoals(idx).xStart = f - delta
+		awrde.Project.OptGoals(idx).xStop = f + delta
+	else:
+		for idx in range(1, awrde.Project.Optimizer.Variables.Count + 1):
+
+			# Change optimizer goal frequency
+			awrde.Project.OptGoals(idx).xStart = f - delta
+			awrde.Project.OptGoals(idx).xStop = f + delta
 
 def saveOptResults(awrde, data, g):
 
