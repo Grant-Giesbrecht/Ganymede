@@ -23,7 +23,7 @@ weight_PAE = 1
 
 Plevel_W = .2
 Ptol_W = .01
-target_PAE = 40
+target_PAE = 35
 
 Pmax = 20
 Pmin = 14
