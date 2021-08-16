@@ -14,19 +14,16 @@ from ganymede import *
 
 schema_name = "SweepSchema_3053_4x100"
 plot_data_graph_name = "Script Values Plot";
-freqs = np.linspace(8e9, 12e9, 25, endpoint=True);
+freqs = np.linspace(8e9, 12e9, 5, endpoint=True);
 scan_name_prefix = "3053_4x100"
 
 max_opt_iter = 300
-weight_Pout = 1000
-weight_PAE = 1
+weight_Pout = 1
 
 Plevel_W = .2
-Ptol_W = .01
-target_PAE = 45
 
-Pmax = 19
-Pmin = 15
+Pmax = 20
+Pmin = 14
 gamma_max = 1
 gamma_min = .001
 arg_max = 360
@@ -64,22 +61,12 @@ w = weight_Pout
 L = 2
 xStart = 7.99e9
 xStop = 8.01e9
-yStart = Plevel_W - Ptol_W
-yStop = Plevel_W - Ptol_W
+yStart = Plevel_W
+yStop = Plevel_W
 xUnit = MWO.mwUT_Frequency
 yUnit = MWO.mwUT_Frequency
-og_Plow = awrde.Project.OptGoals.AddGoal(f"{schema_name}.AP_HB", f"PT(PORT_2)", MWO.mwOGT_GreaterThan, w, L, xStart, xStop, xUnit, yStart, yStop, yUnit)
+og_Plow = awrde.Project.OptGoals.AddGoal(f"{schema_name}.AP_HB", f"PT(PORT_2)", MWO.mwOGT_Equals, w, L, xStart, xStop, xUnit, yStart, yStop, yUnit)
 
-# Create optimizer goal (Maximum output power)
-yStart = Plevel_W + Ptol_W
-yStop = Plevel_W + Ptol_W
-og_Plow = awrde.Project.OptGoals.AddGoal(f"{schema_name}.AP_HB", f"PT(PORT_2)", MWO.mwOGT_LessThan, w, L, xStart, xStop, xUnit, yStart, yStop, yUnit)
-
-# Create optimizer goal (PAE)
-w = weight_PAE
-yStart = target_PAE
-yStop = target_PAE
-og_PAE = awrde.Project.OptGoals.AddGoal(f"{schema_name}.AP_HB", f"PAE(PORT_1,PORT_2)", MWO.mwOGT_GreaterThan, w, L, xStart, xStop, xUnit, yStart, yStop, yUnit)
 
 # Print summary of optimizer goals
 print(f"-> Created new optmizer goals.\n")
