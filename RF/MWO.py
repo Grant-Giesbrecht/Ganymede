@@ -107,6 +107,67 @@ def updateOptFreq(awrde, f, idx=-1, delta=1):
 			awrde.Project.OptGoals(idx).xStart = f - delta
 			awrde.Project.OptGoals(idx).xStop = f + delta
 
+
+def updateElementParameter(awrde, schemaName:str, elementName:str, parameterName:str, value):
+
+	schemaIdx = -1
+	elmtIdx = -1
+	paramIdx = -1
+
+	# Get schema index
+	for si in range(1, awrde.Project.Schematics.Count + 1):
+		if awrde.Project.Schematics.Item(si).Name == schemaName:
+			schemaIdx = si
+			break;
+	if schemaIdx == -1:
+		return f"Failed to find schematic with name '{schemaName}'."
+
+	# Get element index
+	for ei in range(1, awrde.Project.Schematics.Item(schemaIdx).Elements.Count+1):
+		if awrde.Project.Schematics.Item(schemaIdx).Elements.Item(ei).Name == elementName:
+			elmtIdx = ei
+			break
+	if elmtIdx == -1:
+		return f"Failed to find element with name '{elementName}'."
+
+	# Get parameter index
+	for pi in range(1, awrde.Project.Schematics.Item(schemaIdx).Elements.Item(elmtIdx).Parameters.Count + 1):
+		if awrde.Project.Schematics.Item(schemaIdx).Elements.Item(ei).Parameters.Item(pi).Name == parameterName:
+			paramIdx = pi
+			break
+	if paramIdx == -1:
+		return f"Failed to find parameter with name '{parameterName}'."
+
+	awrde.Project.Schematics.Item(schemaIdx).Elements.Item(elmtIdx).Parameters.Item(paramIdx).ValueAsDouble = value
+
+def printParams(awrde, schemaName:str, elementName:str, indent:str="", subindent:str="  "):
+
+	schemaIdx = -1
+	elmtIdx = -1
+	paramIdx = -1
+
+	print(f"{indent}Parameters for [Sch:'{schemaName}', El:'{elementName}']:")
+	# Get schema index
+	for si in range(1, awrde.Project.Schematics.Count + 1):
+		if awrde.Project.Schematics.Item(si).Name == schemaName:
+			schemaIdx = si
+			break;
+	if schemaIdx == -1:
+		return f"Failed to find schematic with name '{schemaName}'."
+
+	# Get element index
+	for ei in range(1, awrde.Project.Schematics.Item(schemaIdx).Elements.Count+1):
+		if awrde.Project.Schematics.Item(schemaIdx).Elements.Item(ei).Name == elementName:
+			elmtIdx = ei
+			break
+	if elmtIdx == -1:
+		return f"Failed to find element with name '{elementName}'."
+
+	# Get parameter index
+	for pi in range(1, awrde.Project.Schematics.Item(schemaIdx).Elements.Item(elmtIdx).Parameters.Count + 1):
+		print(f"{indent}{subindent}{awrde.Project.Schematics.Item(schemaIdx).Elements.Item(ei).Parameters.Item(pi).Name}")
+
+
 def saveOptResults(awrde, data, g):
 
 	# Create output dictionary
