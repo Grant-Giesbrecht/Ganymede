@@ -9,6 +9,7 @@ import timeit
 from datetime import datetime
 import win32com.client
 from ganymede import *
+from os import path
 
 ############################# CONFIGURATION OPTIONS ############################
 
@@ -173,4 +174,4 @@ if len(header_notes) > 0:
 	header_string = header_string + "\n\n" + header_notes;
 ddf.setHeader(header_string);
 
-ddf.save(f"scan_{scan_name_prefix}_{ts}.ddf")
+ddf.save(path.join(".", "Data_1G", f"scan_{scan_name_prefix}_{ts}.ddf"))
