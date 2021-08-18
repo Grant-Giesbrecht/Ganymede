@@ -102,8 +102,7 @@ def updateOptFreq(awrde, f, idx=-1, delta=1):
 		awrde.Project.OptGoals(idx).xStart = f - delta
 		awrde.Project.OptGoals(idx).xStop = f + delta
 	else:
-		for idx in range(1, awrde.Project.Optimizer.Variables.Count + 1):
-
+		for idx in range(1, awrde.Project.OptGoals.Count + 1):
 			# Change optimizer goal frequency
 			awrde.Project.OptGoals(idx).xStart = f - delta
 			awrde.Project.OptGoals(idx).xStop = f + delta
