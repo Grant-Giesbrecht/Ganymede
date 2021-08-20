@@ -232,20 +232,6 @@ def sweepdict_to_ddf(dl):
 
 	return ddf
 
-def connectFindSchema(schema_name):
-
-	# Initialize connection to Microwave Office
-	awrde = win32com.client.Dispatch("MWOApp.MWOffice")
-
-	# Check that schematic exists
-	if not awrde.Project.Schematics.Exists(schema_name):
-		print(f"Cannot find schematic '{schema_name}' needed for sweep.\n\nAborting.")
-		sys.exit()
-	else:
-		print(f"-> Found schematic '{schema_name}'.")
-
-	return awrde
-
 class OptGoal:
 
 	def __init__(self):
@@ -263,3 +249,42 @@ class OptGoal:
 		self.circSimName = "" #Example: "SweepSchema_4950_8x100.AP_HB"
 		self.measName = "" #Example: "PT(PORT_2)", "PAE(PORT_1, PORT_2)"
 		self.comparison = MWO.mwOGT_Equals #Options: mwOGT_GreaterThan, mwOGT_LessThan, mwOGT_Equals
+
+class AWRProject:
+
+	def __init__(self):
+
+		self.awrde = None
+		self.cs = "-> " # CLI message symbol
+
+		self.optGoals = []
+
+	def connectFindSchema(self, schema_name):
+
+		# Initialize connection to Microwave Office
+		awrde = win32com.client.Dispatch("MWOApp.MWOffice")
+
+		# Check that schematic exists
+		if not awrde.Project.Schematics.Exists(schema_name):
+			print(f"Cannot find required schematic '{schema_name}'.\n\nAborting.")
+			sys.exit()
+		else:
+			print(f"{self.cs}Found schematic '{schema_name}'.")
+
+		return awrde
+
+	def applyGoals(self):
+		''' Delete all AWR Optimizer Goals and apply the goals in self.optGoals
+		to the AWR project '''
+
+		# Clear prior goals
+		awrde.Project.OptGoals.RemoveAll()
+
+		# Loop over all goals and apply them
+		for g in self.optGoals:
+			# Add goal
+			awrde.Project.OptGoals.AddGoal(g.circSimName, g.measName, g.comparison, g.w, g.L, g.xStart, g.xStop, g.xUnit, g.yStart, g.yStop, g.yUnit)
+
+		print(f"{self.cs}Successfully applied {len(self.optGoals)} optimizer goals.")
+
+	def
