@@ -83,7 +83,7 @@ def runOptimizer(awrde):
 		num_iter = str(awrde.Project.Optimizer.MaxIterations)
 		width = len(num_iter)
 
-		print(f"\r*** OPTIMIZER RUNNING *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(awrde.Project.Optimizer.Iteration).zfill(width)}/{num_iter})", end="")
+		print(f"\r*** OPTIMIZER RUNNING *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(awrde.Project.Optimizer.Iteration).zfill(width)}/{num_iter})", end='', flush=True)
 		time.sleep(0.1)
 
 	et = time.time()
@@ -231,3 +231,17 @@ def sweepdict_to_ddf(dl):
 			print(ddf.err())
 
 	return ddf
+
+def connectFindSchema(schema_name):
+
+	# Initialize connection to Microwave Office
+	awrde = win32com.client.Dispatch("MWOApp.MWOffice")
+
+	# Check that schematic exists
+	if not awrde.Project.Schematics.Exists(schema_name):
+		print(f"Cannot find schematic '{schema_name}' needed for sweep.\n\nAborting.")
+		sys.exit()
+	else:
+		print(f"-> Found schematic '{schema_name}'.")
+
+	return awrde

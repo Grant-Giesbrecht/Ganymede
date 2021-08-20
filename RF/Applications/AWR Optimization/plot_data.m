@@ -1,5 +1,5 @@
 % Load data
-filename = "scan_3053_4x100_16-Aug-2021 1759.ddf";
+filename = fullfile("Data_1G", "Old", "scan_3053_4x100_16-Aug-2021 1759.ddf");
 ddf = DDFIO;
 ddf.load(filename);
 
@@ -17,7 +17,7 @@ V = ddf.get("SweepSchema_3053_4x100_AP_HB__Vcomp_DCVS_VDS_0__").val;
 PAE = ddf.get("SweepSchema_3053_4x100_AP_HB_PAE_PORT_1_PORT_2_").val;
 f = ddf.get("freq").val;
 
-G = polcomplex(magGamma.val, argGamma.val);
+G = polcomplex(magGamma.val, argGamma.val, 'Unit', 'degrees');
 Z_vi = V./I;
 
 figure(4)
