@@ -245,3 +245,21 @@ def connectFindSchema(schema_name):
 		print(f"-> Found schematic '{schema_name}'.")
 
 	return awrde
+
+class OptGoal:
+
+	def __init__(self):
+
+		self.rdname = ""
+
+		self.xStart = -1
+		self.xStop = -1
+		self.yStart = -1
+		self.yStop = -1
+		self.xUnit = -1
+		self.yUnit = -1
+		self.L = 2
+		self.w = 1
+		self.circSimName = "" #Example: "SweepSchema_4950_8x100.AP_HB"
+		self.measName = "" #Example: "PT(PORT_2)", "PAE(PORT_1, PORT_2)"
+		self.comparison = MWO.mwOGT_Equals #Options: mwOGT_GreaterThan, mwOGT_LessThan, mwOGT_Equals
