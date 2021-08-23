@@ -295,6 +295,7 @@ class AWRVariable:
 		# Human readable name for easier referencing
 		self.rdname = ""
 
+		self.log = []
 
 		self.name = "" # Name (as appears in 'Parameter' list) (ie. as is in DisplayText field)
 		self.schema = "" # Schematic in which it is defined
@@ -359,6 +360,14 @@ class AWRProject:
 
 		return self.schema(schema).Equations.Item(ei)
 
+	def graph(self, graph_name):
+
+		gi = self.getGraphIdx(graph_name)
+		if gi == -1:
+			return None
+
+		return self.awrde.Project.Graphs.Item(gi)
+
 	def getSchemaIdx(self, schema_name):
 
 		idx = -1
@@ -385,11 +394,26 @@ class AWRProject:
 		eq_disptxt = eq_disptxt.replace("=", "(?<!=)=(?!=)")
 		for ei in range(1, self.awrde.Project.Schematics.Item(si).Equations.Count + 1):
 
-			if self.awrde.Project.Schematics.Item(si).Equations.Item(ei).DisplayText == eq_disptxt:
+			if bool(re.match(eq_disptxt, self.awrde.Project.Schematics.Item(si).Equations.Item(ei).DisplayText)):
 				idx = ei
 				break
 
 		return (si, ei)
+
+	def getGraphIdx(self, graph_name):
+
+		idx = -1
+
+		graph_name = graph_name.replace("=", "(?<!=)=(?!=)")
+
+		# Find plot graph
+		for gi in range(1, self.awrde.Project.Graphs.Count + 1):
+
+			if bool(re.match(graph_name, self.awrde.Project.Graphs.Item(gi).Name)):
+				idx = gi
+				break
+
+		return idx
 
 	def findSchematic(self, schema_name):
 
@@ -458,3 +482,10 @@ class AWRProject:
 
 		# Return - Great success
 		return True
+
+	def msg(self, m:str, hide:bool=False):
+
+		if not hide:
+			print(f"{self.cs}{m}")
+
+		self.messages.append(m)
