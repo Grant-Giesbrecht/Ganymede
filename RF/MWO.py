@@ -1,3 +1,4 @@
+import re
 import time
 from pyddf import *
 import win32com.client
@@ -292,18 +293,36 @@ class AWRVariable:
 	def __init__(self, schematic, name):
 
 		# Human readable name for easier referencing
-		self.rdname
+		self.rdname = ""
 
 
-		self.name = "" # Name (as appears in 'Parameter' list)
+		self.name = "" # Name (as appears in 'Parameter' list) (ie. as is in DisplayText field)
 		self.schema = "" # Schematic in which it is defined
 
 		self.maximum = None
 		self.minimum = None
-		self.constrained = None
-		self.optEnabled = None
+		self.constrained = True
+		self.optEnabled = True
 
-		self.found = False
+		# self.found = False
+
+	def set(self, rdname=None, name=None, schema=None, maximum=None, minimum=None, constrained=None, enabled=None):
+		''' Set one or more parameters in one line '''
+
+		if rdname is not None:
+			self.rdname = rdname
+		if name is not None:
+			self.name = name
+		if schema is not None:
+			self.schema = schema
+		if maximum is not None:
+			self.maximum = maximum
+		if minimum is not None:
+			self.minimum = minimum
+		if constrained is not None:
+			self.constrained = constrained
+		if enabled is not None:
+			self.enabled = enabled
 
 
 class AWRProject:
@@ -319,17 +338,68 @@ class AWRProject:
 		# Opt goals defined in Python to apply to the AWR project
 		self.optGoals = []
 
-	def connectFindSchema(self, schema_name):
+	def connect(self):
 
 		# Initialize connection to Microwave Office
 		self.awrde = win32com.client.Dispatch("MWOApp.MWOffice")
 
+	def schema(self, name):
+
+		si = self.getSchemaIdx(name)
+		if si == -1:
+			return None
+
+		return self.awrde.Project.Schematics.Item(si)
+
+	def eqn(self, schema, disptxt):
+
+		(si, ei) = self.getEqIdx(schema, disptxt)
+		if si == -1 or ei == -1:
+			return None
+
+		return self.schema(schema).Equations.Item(ei)
+
+	def getSchemaIdx(self, schema_name):
+
+		idx = -1
+
+		for si in range(1, self.awrde.Project.Schematics.Count + 1):
+
+			schema_name = schema_name.replace("=", "(?<!=)=(?!=)")
+			if bool(re.match(schema_name, self.awrde.Project.Schematics.Item(si).Name)):
+				idx = si
+				break;
+
+		return idx
+
+	def getEqIdx(self, schema_name, eq_disptxt):
+
+		idx = -1
+
+		# Get schematic index
+		si = self.getSchemaIdx(schema_name)
+		if si == -1:
+			return (-1, -1)
+
+		# Find equation
+		eq_disptxt = eq_disptxt.replace("=", "(?<!=)=(?!=)")
+		for ei in range(1, self.awrde.Project.Schematics.Item(si).Equations.Count + 1):
+
+			if self.awrde.Project.Schematics.Item(si).Equations.Item(ei).DisplayText == eq_disptxt:
+				idx = ei
+				break
+
+		return (si, ei)
+
+	def findSchematic(self, schema_name):
+
 		# Check that schematic exists
 		if not self.awrde.Project.Schematics.Exists(schema_name):
 			print(f"Cannot find required schematic '{schema_name}'.\n\nAborting.")
-			sys.exit()
+			return False
 		else:
 			print(f"{self.cs}Found schematic '{schema_name}'.")
+			return True
 
 	def applyGoals(self):
 		''' Delete all AWR Optimizer Goals and apply the goals in self.optGoals
@@ -344,3 +414,47 @@ class AWRProject:
 			self.awrde.Project.OptGoals.AddGoal(g.circSimName, g.measName, g.comparison, g.w, g.L, g.xStart, g.xStop, g.xUnit, g.yStart, g.yStop, g.yUnit)
 
 		print(f"{self.cs}Successfully applied {len(self.optGoals)} optimizer goals.")
+
+		return True
+
+	def applyOptVariables(self):
+
+		''' Applies all variables in self.variables to the AWR project '''
+
+		# Ensure all variables are enabled for optimization (if requested)
+		#
+		# For each variable...
+		for v in self.variables:
+
+			# Locate schematic and equation
+			eq = self.eqn(v.schema, v.name)
+
+			# Set to optimize (if requested)
+			if v.optEnabled:
+				eq.Enabled = True
+
+		# Run through optimizer variables and configure all
+		for ovidx in range(1, self.awrde.Project.Optimizer.Variables.Count+1):
+
+			ov = self.awrde.Project.Optimizer.Variables.Item(ovidx)
+
+			# Check if optimizer variable is not listed in self.variables...
+			if any(x.name == ov.Name for x in self.variables):
+				# Remove if not listed
+				ov.Enabled = False
+				continue
+
+			idx = -1
+			for index, item in enumerate(self.variables):
+				if item.name == ov.Name:
+					idx = index
+					break
+
+			# Configure optimization variable
+			ov.Constrained = self.variables[idx].constrained
+			ov.Maximum = self.variables[idx].maximum
+			ov.Minimum = self.variables[idx].minimum
+			ov.Nominal = (self.variables[idx].minimum + self.variables[idx].maximum)/2
+
+		# Return - Great success
+		return True
