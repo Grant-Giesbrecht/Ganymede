@@ -292,13 +292,14 @@ class AWRVariable:
 
 	def __init__(self, schematic, name):
 
-		# Human readable name for easier referencing
+		# Human readable name for easier referencing (ie. in output data)
 		self.rdname = ""
 
 		self.log = []
 
-		self.name = "" # Name (as appears in 'Parameter' list) (ie. as is in DisplayText field)
-		self.schema = "" # Schematic in which it is defined
+		self.disptxt = name # Name as appears in AWR schematics (ie. as is in Equation.DisplayText field)
+		self.name = name # Name as appears in optimizer variable list (ie. as in OptVariable.Name field)
+		self.schema = schematic # Schematic in which it is defined
 
 		self.maximum = None
 		self.minimum = None
@@ -307,11 +308,13 @@ class AWRVariable:
 
 		# self.found = False
 
-	def set(self, rdname=None, name=None, schema=None, maximum=None, minimum=None, constrained=None, enabled=None):
+	def set(self, rdname=None, disptxt=None, name=None, schema=None, maximum=None, minimum=None, constrained=None, enabled=None):
 		''' Set one or more parameters in one line '''
 
 		if rdname is not None:
 			self.rdname = rdname
+		if disptxt is not None:
+			self.disptxt = disptxt
 		if name is not None:
 			self.name = name
 		if schema is not None:
@@ -332,12 +335,23 @@ class AWRProject:
 
 		self.awrde = None
 		self.cs = "-> " # CLI message symbol
+		self.cse = "-> ERORR: " #CLI error message symbol
+		self.messages = []
+
+		self.meas_names = {}
 
 		# Variables described in Python to find and optimize in the AWR project
 		self.variables = []
 
 		# Opt goals defined in Python to apply to the AWR project
 		self.optGoals = []
+
+	def getMeasName(self, ms:str):
+
+		if ms in self.meas_names:
+			return self.meas_names[ms]
+		else:
+			return ms
 
 	def connect(self):
 
@@ -367,6 +381,15 @@ class AWRProject:
 			return None
 
 		return self.awrde.Project.Graphs.Item(gi)
+
+	def optVar(self, ov_name):
+
+		ov_name = ov_name.replace("=", "(?<!=)=(?!=)")
+
+		for idx in range(1, self.awrde.Project.Optimizer.Variables.Count + 1):
+			if bool(re.match(ov_name, self.awrde.Project.Optimizer.Variables.Item(idx).Name)):
+				return self.awrde.Project.Optimizer.Variables.Item(idx)
+
 
 	def getSchemaIdx(self, schema_name):
 
@@ -415,17 +438,17 @@ class AWRProject:
 
 		return idx
 
-	def findSchematic(self, schema_name):
+	def findSchematic(self, schema_name, silent=True):
 
 		# Check that schematic exists
 		if not self.awrde.Project.Schematics.Exists(schema_name):
-			print(f"Cannot find required schematic '{schema_name}'.\n\nAborting.")
+			self.msg(f"Cannot find required schematic '{schema_name}'.\n\nAborting.", silent=silent)
 			return False
 		else:
-			print(f"{self.cs}Found schematic '{schema_name}'.")
+			self.msg(f"Found schematic '{schema_name}'.", silent=silent)
 			return True
 
-	def applyGoals(self):
+	def applyGoals(self, silent=True):
 		''' Delete all AWR Optimizer Goals and apply the goals in self.optGoals
 		to the AWR project '''
 
@@ -437,11 +460,55 @@ class AWRProject:
 			# Add goal
 			self.awrde.Project.OptGoals.AddGoal(g.circSimName, g.measName, g.comparison, g.w, g.L, g.xStart, g.xStop, g.xUnit, g.yStart, g.yStop, g.yUnit)
 
-		print(f"{self.cs}Successfully applied {len(self.optGoals)} optimizer goals.")
+		self.msg(f"Successfully applied {len(self.optGoals)} optimizer goals.", silent=silent)
 
 		return True
 
-	def applyOptVariables(self):
+	def getVariableMatch(self, awrname:str):
+
+		if awrname[0] == ":": #Expect of the form ':<NAME>'
+
+			#Look for match of remainder of name
+			idx = -1
+			for index, item in enumerate(self.variables):
+				if item.name == awrname[1:]:
+					idx = index
+					break
+
+			if idx == -1:
+				return None
+
+			return self.variables[idx]
+
+		elif "\\" in awrname: #Expect of the form '<schema>\<name>'
+
+			si = awrname.find("\\")
+
+			#Look for match of schematic and name
+			idx = -1
+			for index, item in enumerate(self.variables):
+				if item.name == awrname[si+1:] and item.schema == awrname[0:si]:
+					idx = index
+					break
+
+			if idx == -1:
+				return None
+
+			return self.variables[idx]
+
+	def turnOffOptVariables(self):
+
+		for ovidx in range(self.awrde.Project.Optimizer.Variables.Count, 0, -1):
+
+			ov = self.awrde.Project.Optimizer.Variables.Item(ovidx)
+			ov.Enabled = False
+			#
+			# # Check if optimizer variable is not listed in self.variables...
+			# if any(x.name == ov.Name for x in self.variables):
+			# 	# Remove if not listed
+			# 	ov.Enabled = False
+
+	def applyOptVariables(self, silent:bool=True):
 
 		''' Applies all variables in self.variables to the AWR project '''
 
@@ -451,11 +518,17 @@ class AWRProject:
 		for v in self.variables:
 
 			# Locate schematic and equation
-			eq = self.eqn(v.schema, v.name)
+			eq = self.eqn(v.schema, v.disptxt)
 
 			# Set to optimize (if requested)
 			if v.optEnabled:
-				eq.Enabled = True
+				eq.Optimize = True
+
+			# # Try to change value in schematic to nominal
+			# ei = eq.DisplayText.find("=")
+			# if ei != -1:
+			# 	nv = (v.maximum + v.minimum)/2
+			# 	eq.DisplayText = eq.DisplayText[0:ei] + f"={str(nv)}"
 
 		# Run through optimizer variables and configure all
 		for ovidx in range(1, self.awrde.Project.Optimizer.Variables.Count+1):
@@ -468,24 +541,120 @@ class AWRProject:
 				ov.Enabled = False
 				continue
 
-			idx = -1
-			for index, item in enumerate(self.variables):
-				if item.name == ov.Name:
-					idx = index
-					break
+			# Find AWRVariable matching optimizer variable
+			awrv = self.getVariableMatch(ov.Name)
+			if awrv is None:
+				return False
+				#
+				# Next steps:
+				#	1. Replace the block below with this block (currently being written).
+				#	2. Must creat 'getVariableMatch()' which mactches a variable (w/ schematic and
+				#      name) to the weird format from AWR (sometimes comes with a colon. Sometimes
+				#      schematic then backslash).
+				#	3. Continue troubleshooting the code (const_Pout_R2.py) until the scans are
+				#	   working correctly.
+
+			# #START_REPLACE
+			# idx = -1
+			# for index, item in enumerate(self.variables):
+			# 	if item.name == ov.Name:
+			# 		idx = index
+			# 		break
+			# #END_REPLACE
 
 			# Configure optimization variable
-			ov.Constrained = self.variables[idx].constrained
-			ov.Maximum = self.variables[idx].maximum
-			ov.Minimum = self.variables[idx].minimum
-			ov.Nominal = (self.variables[idx].minimum + self.variables[idx].maximum)/2
+			ov.Constrained = awrv.constrained
+			ov.Maximum = awrv.maximum
+			ov.Minimum = awrv.minimum
+			ov.Nominal = (awrv.minimum + awrv.maximum)/2
+
+		self.msg(f"Successfully applied {len(self.variables)} optimization variables.", silent=silent)
 
 		# Return - Great success
 		return True
 
-	def msg(self, m:str, hide:bool=False):
+	def updateOptFreq(self, f, idx=-1, delta=1, silent=True):
 
-		if not hide:
+		self.msg(f"Changing frequency to {f/1e9} GHz", silent=silent)
+
+		# Change project frequencies (b/c otherwise optimizer will run every freq)
+		self.awrde.Project.Frequencies.Clear()
+		self.awrde.Project.Frequencies.AddMultiple([f])
+
+		if idx != -1:
+			# Change optimizer goal frequency
+			self.awrde.Project.OptGoals(idx).xStart = f - delta
+			self.awrde.Project.OptGoals(idx).xStop = f + delta
+		else:
+			for idx in range(1, self.awrde.Project.OptGoals.Count + 1):
+				# Change optimizer goal frequency
+				self.awrde.Project.OptGoals(idx).xStart = f - delta
+				self.awrde.Project.OptGoals(idx).xStop = f + delta
+
+	def setMaxIterations(self, mi:int):
+		self.awrde.Project.Optimizer.MaxIterations = mi
+
+	def runOptimizer(self, silent=True):
+
+		# Verify optimizer is not already running
+		if self.awrde.Project.Optimizer.Running:
+			self.err("Cannot start optimzier because it is already running!\nAborting.", silent=silent)
+			return False
+
+		# Start optimizer
+		self.awrde.Project.Optimizer.Start()
+
+		# Wait for optimizer to finish. Print updates in the interim
+		width = 0
+		st = time.time()
+		while self.awrde.Project.Optimizer.Running:
+
+			num_iter = str(self.awrde.Project.Optimizer.MaxIterations)
+			width = len(num_iter)
+
+			if not silent:
+				print(f"\r*** OPTIMIZER RUNNING *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(self.awrde.Project.Optimizer.Iteration).zfill(width)}/{num_iter})", end='', flush=True)
+			time.sleep(0.1)
+
+		et = time.time()
+
+		if not silent:
+			print(f"\r*** OPTIMIZER FINISHED *** (Time Elapsed: {format(round(time.time()-st, 2), '.2f').zfill(6)} s, Iteration: {str(self.awrde.Project.Optimizer.Iteration).zfill(width)}/{self.awrde.Project.Optimizer.MaxIterations})")
+
+		return True
+
+	def saveOptResults(self, data, g):
+
+		# Create output dictionary
+		nd = dict()
+
+		# Scan over each variable, save to a dictionary if optimized
+		for v in self.variables:
+			nd[v.rdname] = self.optVar(v.name)
+
+		# # Scan over each optimization variable and save to dictionary
+		# for idx in range(1, self.awrde.Project.Optimizer.Variables.Count + 1):
+		# 	nd[self.awrde.Project.Optimizer.Variables.Item(idx).Name] = awrde.Project.Optimizer.Variables.Item(idx).Nominal
+
+		for idx in range(1, g.Measurements.Count + 1):
+			nd[self.getMeasName(g.Measurements.Item(idx).Name)] = g.Measurements.Item(idx).TraceValues(1)
+
+		# # Scan over each value in graph and save to dictionary
+		# for idx in range(1, g.Measurements.Count + 1):
+		# 	nd[g.Measurements.Item(idx).Name] = g.Measurements.Item(idx).TraceValues(1)
+
+		data.append(nd)
+
+	def msg(self, m:str, silent:bool=False):
+
+		if not silent:
 			print(f"{self.cs}{m}")
+
+		self.messages.append(m)
+
+	def err(self, m:str, silent:bool=False):
+
+		if not silent:
+			print(f"{self.cse}{m}")
 
 		self.messages.append(m)
