@@ -298,7 +298,8 @@ class AWRProject:
 		self.awrde = None
 		self.cs = "-> " # CLI message symbol
 		self.cse = "-> ERORR: " #CLI error message symbol
-		self.csd = "\tDEBUG: " #CLI debug message symbol
+		self.csd = "\tDEBUG: " #CLI debug message symbol'
+		self.csw = "-> WARNING:" #CLI warning message symbol
 		self.log = []
 
 		self.meas_names = {}
@@ -632,6 +633,11 @@ class AWRProject:
 			print(Fore.BLUE+Back.WHITE+f"{self.csd}{m}"+Style.RESET_ALL)
 
 		self.log.append(m)
+
+	def warning(self, m:str, silent:bool=False):
+
+		if not silent:
+			print(Fore.BLACK + Back.RED +f"{self.csw}" + Style.RESET_ALL + Fore.YELLOW + f"{m}"+Style.RESET_ALL)
 
 	def printOptVars(self, loc:str="REM", indent="", rel_indent="  "):
 		''' Print all optimization variables '''
