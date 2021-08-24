@@ -2,6 +2,7 @@ import re
 import time
 from pyddf import *
 import win32com.client
+from colorama import Fore, Back, Style
 
 # mwOptGoalType
 mwOGT_Equals = 0
@@ -31,43 +32,6 @@ mwUT_DBOnlyPower = 18
 mwUT_WattsOnlyPower = 19
 mwUT_TextOnly = 20
 
-def printOptVars(awrde, indent="", rel_indent="  "):
-	''' Print all optimization variables '''
-
-	for idx in range(1, awrde.Project.Optimizer.Variables.Count + 1):
-		print(f"{indent}Variable {idx}:")
-		print(f"{indent}{rel_indent}Name: {awrde.Project.Optimizer.Variables.Item(idx).Name}")
-		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Enabled}")
-		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Constrained}")
-		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Maximum}")
-		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Minimum}")
-		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Nominal}")
-		print(f"{indent}{rel_indent}: {awrde.Project.Optimizer.Variables.Item(idx).Step}")
-
-def printGoals(awrde, indent="", rel_indent="  "):
-	''' Print all optimization goals in the MWO object `awrde`. '''
-
-	for idx in range(1, awrde.Project.OptGoals.Count + 1):
-		print(f"{indent}Goal {idx}:")
-		printGoal(awrde, idx, f"{indent}{rel_indent}")
-
-def printGoal(awrde, idx, indent=""):
-	'''Print the goal in index `idx` in the MWO object `awrde`. '''
-
-	print(f"{indent}Circuit: {awrde.Project.OptGoals.Item(idx).CircuitName}")
-	print(f"{indent}Cost: {awrde.Project.OptGoals.Item(idx).Cost}")
-	print(f"{indent}Enable: {awrde.Project.OptGoals.Item(idx).Enable}")
-	print(f"{indent}LVal: {awrde.Project.OptGoals.Item(idx).LVal}")
-	print(f"{indent}Measurement: {awrde.Project.OptGoals.Item(idx).Measurement}")
-	print(f"{indent}Measurement Name: {awrde.Project.OptGoals.Item(idx).MeasurementName}")
-	print(f"{indent}Name: {awrde.Project.OptGoals.Item(idx).Name}")
-	print(f"{indent}Tag: {awrde.Project.OptGoals.Item(idx).Tag}")
-	print(f"{indent}Type: {awrde.Project.OptGoals.Item(idx).Type}")
-	print(f"{indent}Weight: {awrde.Project.OptGoals.Item(idx).Weight}")
-	print(f"{indent}xStart: {awrde.Project.OptGoals.Item(idx).xStart}")
-	print(f"{indent}xStop: {awrde.Project.OptGoals.Item(idx).xStop}")
-	print(f"{indent}yStart: {awrde.Project.OptGoals.Item(idx).yStart}")
-	print(f"{indent}yStop: {awrde.Project.OptGoals.Item(idx).yStop}")
 
 
 def runOptimizer(awrde):
@@ -295,8 +259,6 @@ class AWRVariable:
 		# Human readable name for easier referencing (ie. in output data)
 		self.rdname = ""
 
-		self.log = []
-
 		self.disptxt = name # Name as appears in AWR schematics (ie. as is in Equation.DisplayText field)
 		self.name = name # Name as appears in optimizer variable list (ie. as in OptVariable.Name field)
 		self.schema = schematic # Schematic in which it is defined
@@ -336,7 +298,8 @@ class AWRProject:
 		self.awrde = None
 		self.cs = "-> " # CLI message symbol
 		self.cse = "-> ERORR: " #CLI error message symbol
-		self.messages = []
+		self.csd = "\tDEBUG: " #CLI debug message symbol
+		self.log = []
 
 		self.meas_names = {}
 
@@ -523,7 +486,9 @@ class AWRProject:
 			# Set to optimize (if requested)
 			if v.optEnabled:
 				eq.Optimize = True
-
+				self.debug(f"Optimize ON for Eq. '{eq.DisplayText}'")
+			else:
+				self.debug(f"Optimize OFF for Eq. '{eq.DisplayText}'")
 			# # Try to change value in schematic to nominal
 			# ei = eq.DisplayText.find("=")
 			# if ei != -1:
@@ -538,12 +503,14 @@ class AWRProject:
 			# Check if optimizer variable is not listed in self.variables...
 			if any(x.name == ov.Name for x in self.variables):
 				# Remove if not listed
+				self.debug(f"Removing unlisted '{ov.Name}' from optimizer list")
 				ov.Enabled = False
 				continue
 
 			# Find AWRVariable matching optimizer variable
 			awrv = self.getVariableMatch(ov.Name)
 			if awrv is None:
+				self.debug(f"Failed to find matching variable")
 				return False
 				#
 				# Next steps:
@@ -650,11 +617,73 @@ class AWRProject:
 		if not silent:
 			print(f"{self.cs}{m}")
 
-		self.messages.append(m)
+		self.log.append(m)
 
 	def err(self, m:str, silent:bool=False):
 
 		if not silent:
-			print(f"{self.cse}{m}")
+			print(Fore.RED+f"{self.cse}{m}"+Style.RESET_ALL)
 
-		self.messages.append(m)
+		self.log.append(m)
+
+	def debug(self, m:str, silent:bool=False):
+
+		if not silent:
+			print(Fore.BLUE+Back.WHITE+f"{self.csd}{m}"+Style.RESET_ALL)
+
+		self.log.append(m)
+
+	def printOptVars(self, loc:str="REM", indent="", rel_indent="  "):
+		''' Print all optimization variables '''
+
+		if loc.upper() == "REM" or loc.upper() == "REMOTE":
+
+			for idx in range(1, self.awrde.Project.Optimizer.Variables.Count + 1):
+				print(f"{indent}Optimization Variable {idx}:           (Remote)")
+				print(f"{indent}{rel_indent}Name: {self.awrde.Project.Optimizer.Variables.Item(idx).Name}")
+				print(f"{indent}{rel_indent}Enabled: {self.awrde.Project.Optimizer.Variables.Item(idx).Enabled}")
+				print(f"{indent}{rel_indent}Constrained: {self.awrde.Project.Optimizer.Variables.Item(idx).Constrained}")
+				print(f"{indent}{rel_indent}Max: {self.awrde.Project.Optimizer.Variables.Item(idx).Maximum}")
+				print(f"{indent}{rel_indent}Min: {self.awrde.Project.Optimizer.Variables.Item(idx).Minimum}")
+				print(f"{indent}{rel_indent}Nominal: {self.awrde.Project.Optimizer.Variables.Item(idx).Nominal}")
+				print(f"{indent}{rel_indent}Step: {self.awrde.Project.Optimizer.Variables.Item(idx).Step}")
+
+		else:
+
+			for idx, v in enumerate(self.variables):
+
+				print(f"{indent}Optimization Variable {idx}:           (Local)")
+				print(f"{indent}{rel_indent}Name: {v.name}")
+				print(f"{indent}{rel_indent}Read Name: {v.rdname}")
+				print(f"{indent}{rel_indent}Disp Text: {v.disptxt}")
+				print(f"{indent}{rel_indent}Schematic: {v.schema}")
+				print(f"{indent}{rel_indent}Max: {v.maximum}")
+				print(f"{indent}{rel_indent}Min: {v.minimum}")
+				print(f"{indent}{rel_indent}Constrained: {v.constrained}")
+				print(f"{indent}{rel_indent}Opt. Enabled: {v.optEnabled}")
+
+
+	def printGoals(self, indent="", rel_indent="  "):
+		''' Print all optimization goals in the MWO object `awrde`. '''
+
+		for idx in range(1, self.awrde.Project.OptGoals.Count + 1):
+			print(f"{indent}Goal {idx}:")
+			self.printGoal(idx, f"{indent}{rel_indent}")
+
+	def printGoal(self, idx, indent=""):
+		'''Print the goal in index `idx` in the MWO object `awrde`. '''
+
+		print(f"{indent}Circuit: {self.awrde.Project.OptGoals.Item(idx).CircuitName}")
+		print(f"{indent}Cost: {self.awrde.Project.OptGoals.Item(idx).Cost}")
+		print(f"{indent}Enable: {self.awrde.Project.OptGoals.Item(idx).Enable}")
+		print(f"{indent}LVal: {self.awrde.Project.OptGoals.Item(idx).LVal}")
+		print(f"{indent}Measurement: {self.awrde.Project.OptGoals.Item(idx).Measurement}")
+		print(f"{indent}Measurement Name: {self.awrde.Project.OptGoals.Item(idx).MeasurementName}")
+		print(f"{indent}Name: {self.awrde.Project.OptGoals.Item(idx).Name}")
+		print(f"{indent}Tag: {self.awrde.Project.OptGoals.Item(idx).Tag}")
+		print(f"{indent}Type: {self.awrde.Project.OptGoals.Item(idx).Type}")
+		print(f"{indent}Weight: {self.awrde.Project.OptGoals.Item(idx).Weight}")
+		print(f"{indent}xStart: {self.awrde.Project.OptGoals.Item(idx).xStart}")
+		print(f"{indent}xStop: {self.awrde.Project.OptGoals.Item(idx).xStop}")
+		print(f"{indent}yStart: {self.awrde.Project.OptGoals.Item(idx).yStart}")
+		print(f"{indent}yStop: {self.awrde.Project.OptGoals.Item(idx).yStop}")
