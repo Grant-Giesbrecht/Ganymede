@@ -348,12 +348,19 @@ class AWRProject:
 
 	def optVar(self, ov_name):
 
+		self.debug(f"OPTVAR() Search for '{ov_name}'.")
+
 		ov_name = ov_name.replace("=", "(?<!=)=(?!=)")
 
 		for idx in range(1, self.awrde.Project.Optimizer.Variables.Count + 1):
 			if bool(re.match(ov_name, self.awrde.Project.Optimizer.Variables.Item(idx).Name)):
+				self.debug("OPTVAR() Found item at index '{idx}'.")
 				return self.awrde.Project.Optimizer.Variables.Item(idx)
-
+			else:
+				mm_name = self.awrde.Project.Optimizer.Variables.Item(idx).Name
+				self.debug(f"OPTVAR: {mm_name} was not a match")
+		self.warning("OPTVAR() Failed to locate item!")
+		return None
 
 	def getSchemaIdx(self, schema_name):
 
@@ -598,8 +605,12 @@ class AWRProject:
 
 		# Scan over each variable, save to a dictionary if optimized
 		for v in self.variables:
-			nd[v.rdname] = self.optVar(v.name)
 
+			nom = self.optVar(":"+v.name) #TODO: This is a hack and needs a better solution!
+			if nom is None:
+				self.debug("Failed to locate optimization variable in save routine.")
+			else:
+				nd[v.rdname] = nom.Nominal
 		# # Scan over each optimization variable and save to dictionary
 		# for idx in range(1, self.awrde.Project.Optimizer.Variables.Count + 1):
 		# 	nd[self.awrde.Project.Optimizer.Variables.Item(idx).Name] = awrde.Project.Optimizer.Variables.Item(idx).Nominal
@@ -613,11 +624,13 @@ class AWRProject:
 
 		data.append(nd)
 
-	def msg(self, m:str, silent:bool=False):
+	def msg(self, m:str, silent:bool=False, bold:bool=False):
 
 		if not silent:
-			print(f"{self.cs}{m}")
-
+			if not bold:
+				print(f"{self.cs}{m}")
+			else:
+				print(Back.WHITE+Fore.BLACK+Style.DIM+f"\t{self.cs}{m}"+Style.RESET_ALL)
 		self.log.append(m)
 
 	def err(self, m:str, silent:bool=False):

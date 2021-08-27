@@ -19,15 +19,15 @@ plot_data_graph_name = "Script Values Plot 4950_8x100";
 freqs = np.linspace(8e9, 12e9, 5, endpoint=True);
 
 max_opt_iter = 300
-weight_Pout = 1
+weight_Pout = 10
 weight_PAE = 1
 
-Plevel_W = .2
-Ptol_W = .01
-target_PAE = 50
+Plevel_W = .5
+Ptol_W = .05
+target_PAE = 30
 
-Pmax = 20
-Pmin = 15
+Pmax = 14
+Pmin = 8
 gamma_max = 1
 gamma_min = .001
 arg_max = 360
@@ -135,4 +135,7 @@ if len(header_notes) > 0:
 	header_string = header_string + "\n\n" + header_notes;
 ddf.setHeader(header_string);
 
-ddf.save(f"scan_{scan_name_prefix}_{ts}.ddf")
+fname = f"scan_{scan_name_prefix}_{ts}.ddf"
+ddf.save(path.join(path.expanduser('~'), "Sim Data", fname))
+
+proj.msg(f"Saved data to file '{fname}'", bold=True)
