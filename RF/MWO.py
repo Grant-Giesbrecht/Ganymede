@@ -394,6 +394,27 @@ class AWRProject:
 
 		return (si, ei)
 
+	def getAWRScriptModule(self, script_name):
+
+		for gsi in range(1, self.awrde.Project.Application.GlobalScripts.Count+1):
+			if self.awrde.Project.Application.GlobalScripts.Item(gsi).Name == script_name:
+				return self.awrde.Project.Application.GlobalScripts.Item(gsi)
+
+		return None
+
+	def getAWRScriptRoutine(self, script_name, routine_name):
+
+		# Get script
+		awrscript = self.getAWRScriptModule(script_name)
+		if awrscript is None:
+			return None
+
+		# Get Routine
+		for ri in range(1, awrscript.Routines.Count+1):
+			if awrscript.Routines.Item(ri).Name == routine_name:
+				return awrscript.Routines.Item(ri)
+
+
 	def getGraphIdx(self, graph_name):
 
 		idx = -1
@@ -706,3 +727,15 @@ class AWRProject:
 		print(f"{indent}xStop: {self.awrde.Project.OptGoals.Item(idx).xStop}")
 		print(f"{indent}yStart: {self.awrde.Project.OptGoals.Item(idx).yStart}")
 		print(f"{indent}yStop: {self.awrde.Project.OptGoals.Item(idx).yStop}")
+
+	def showAWRScripts(self, indent="", rel_indent="  ", showRoutines:bool=False):
+
+		for gsi in range(1, self.awrde.Project.Application.GlobalScripts.Count+1):
+			gsn = self.awrde.Project.Application.GlobalScripts.Item(gsi).Name
+			if showRoutines:
+				print(f"{indent}[{gsi}] {gsn}:")
+				for gsri in range(1, self.awrde.Project.Application.GlobalScripts.Item(gsi).Routines.Count+1):
+					gsrn = self.awrde.Project.Application.GlobalScripts.Item(gsi).Routines.Item(gsri).Name
+					print(f"{indent}{rel_indent}({gsri}) {gsrn}")
+			else:
+				print(f"{indent}[{gsi}] {gsn}")
