@@ -1,7 +1,23 @@
 import h5py
 import time
 import json
+import numpy as np
 
+def lin_to_dB(x:float, use10:bool=False):
+	''' Converts a value from dB to linear units'''
+	
+	if use10:
+		return 10*np.log10(x)
+	else:
+		return 20*np.log10(x)
+
+def dB_to_lin(x:float, use10:bool=False):
+	''' Converts a value from dB to linear units'''
+	
+	if use10:
+		return 10**(x/10)
+	else:
+		return 10**(x/20)
 
 
 def dict_to_hdf(root_data:dict, save_file:str, use_json_backup:bool=True) -> bool:
@@ -76,7 +92,39 @@ def dict_to_hdf(root_data:dict, save_file:str, use_json_backup:bool=True) -> boo
 		
 		return True
 
-# def hdf5_to_dict(filename) -> bool:
-# 	''' Reads a HDF file and converts the data to a dictionary '''
+def hdf_to_dict(filename) -> dict:
+	''' Reads a HDF file and converts the data to a dictionary '''
 	
-# 	for k in keys
+	def read_level(fh:h5py.File) -> dict:
+		
+		# Initialize output dict
+		out_data = {}
+		
+		# Scan over each element on this level
+		for k in fh.keys():
+			
+			# Read value
+			if type(fh[k]) == h5py._hl.group.Group: # If group, recusively call
+				out_data[k] = read_level(fh[k])
+			else: # Else, read value from file
+				out_data[k] = fh[k][()]
+				
+				# Converting to a pandas DataFrame will crash with
+				# some numpy arrays, so convert to a list.
+				if type(out_data[k]) == np.ndarray:
+						out_data[k] = list(out_data[k])
+		
+		return out_data
+	
+	# Open file
+	with h5py.File(filename, 'r') as fh:
+		
+		try:
+			root_data = read_level(fh)
+		except Exception as e:
+			print(f"Failed to read HDF file! ({e})")
+			return None
+	
+	# Return result
+	return root_data
+	
