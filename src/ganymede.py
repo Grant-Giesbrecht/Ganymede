@@ -2,6 +2,7 @@ import h5py
 import time
 import json
 import numpy as np
+from colorama import Fore, Style
 
 def lin_to_dB(x:float, use10:bool=False):
 	''' Converts a value from dB to linear units'''
@@ -127,4 +128,55 @@ def hdf_to_dict(filename) -> dict:
 	
 	# Return result
 	return root_data
+
+def dict_summary(x:dict, indent_level:int=0, indent_char:str="   "):
 	
+	color_dict = Fore.CYAN
+	color_val = Fore.GREEN
+	color_lines = Fore.LIGHTBLACK_EX
+	color_list_type = Fore.MAGENTA
+	color_type = Fore.YELLOW
+	
+	lvlmarker_1 = "|"
+	lvlmarker_2 = "."
+	
+	def get_indent(indent_level:int):
+		
+		indent_char0 = f" {indent_char}"
+		indent_char1 = f"{lvlmarker_1}{indent_char}"
+		indent_char2 = f"{lvlmarker_2}{indent_char}"
+		
+		indent_str = ""
+		for i in range(indent_level):
+			if i == 0:
+				indent_str += indent_char0
+			elif i % 2 == 1:
+				indent_str += indent_char1
+			else:
+				indent_str += indent_char2
+		return f"{color_lines}{indent_str}{Style.RESET_ALL}"
+	
+	# Scan over each key
+	for k in x.keys():
+		
+		# IF key points to dictionary, recursive call
+		if type(x[k]) == dict:
+			print(f"{get_indent(indent_level)}[{color_dict}{k}{Style.RESET_ALL}]")
+			dict_summary(x[k], indent_level=indent_level+1)
+			
+		# Otherwise print data element stats
+		else:
+			val = x[k]
+			
+			if type(val) == list:
+				try:
+					val0 = val[0]
+				except:
+					val0 = None
+				
+				if type(val0) == list:
+					print(f"{get_indent(indent_level)}{color_val}{k}{Style.RESET_ALL} = {color_list_type}{type(val)}{Style.RESET_ALL}, {len(val)} x {color_list_type}{type(val0)}{Style.RESET_ALL}")
+				else:
+					print(f"{get_indent(indent_level)}{color_val}{k}{Style.RESET_ALL} = {color_list_type}{type(val)}{Style.RESET_ALL}, {len(val)} x {color_type}{type(val0)}{Style.RESET_ALL}")
+			else:
+				print(f"{get_indent(indent_level)}{color_val}{k}{Style.RESET_ALL} = {color_type}{type(val)}{Style.RESET_ALL}")
