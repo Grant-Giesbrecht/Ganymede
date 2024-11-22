@@ -131,13 +131,17 @@ def dB_to_lin(x:float, use10:bool=False):
 # 	# Return result
 # 	return root_data
 
-def dict_summary(x:dict, indent_level:int=0, indent_char:str="   "):
+def dict_summary(x:dict, verbose:int=0, indent_level:int=0, indent_char:str="   "):
+	'''
+	'''
 	
 	color_dict = Fore.CYAN
-	color_val = Fore.GREEN
+	color_name = Fore.GREEN
 	color_lines = Fore.LIGHTBLACK_EX
 	color_list_type = Fore.MAGENTA
 	color_type = Fore.YELLOW
+	color_value = Fore.WHITE
+	color_ellips = Fore.RED
 	
 	lvlmarker_1 = "|"
 	lvlmarker_2 = "."
@@ -158,13 +162,64 @@ def dict_summary(x:dict, indent_level:int=0, indent_char:str="   "):
 				indent_str += indent_char2
 		return f"{color_lines}{indent_str}{Style.RESET_ALL}"
 	
+	def value_to_string(val, verbose:int, indent_level, length_limit:int=50, wrap_length:int=80):
+		
+		# Get full value string if verbose != 0
+		if verbose == 0:
+			return ""
+		
+		val_str = f"{val}"
+		
+		# If verbose == 1, truncate
+		if verbose == 1:
+			if len(val_str) > length_limit:
+				val_str = val_str[:length_limit//2] + f"{color_ellips}...{color_value}" + val_str[-(length_limit//2-3):]
+		
+		# If verbose == 2, indent and print full value
+		if verbose == 2:
+			
+			# Get length of color specifier
+			cvlen = len(color_value)
+			
+			# Get indent char
+			indent = get_indent(indent_level+1)
+			indent.replace('\t', "    ")
+			
+			# Initialize with newline, indent and color
+			if type(val) == str:
+				val_str = f"\n{indent}{color_value}\"{val_str}\""
+			else:
+				val_str = f"\n{indent}{color_value}{val_str}"
+			val_str.replace('\t', "    ")
+			
+			# Find last newline
+			nlidx = val_str.rfind('\n')
+			
+			# Continue to wrap line until under length limit
+			while len(val_str) - nlidx - cvlen > wrap_length:
+				
+				# Add newline (and color specs)
+				val_str = val_str[:(nlidx)+wrap_length+cvlen] + "\n" + indent + color_value + val_str[(nlidx)+wrap_length+cvlen:]
+				
+				# Find new index
+				nlidx = val_str.rfind('\n')
+		
+		else:
+			# Add color to string
+			if type(val) == str:
+				val_str = f"{color_value}\"{val_str}\"{Style.RESET_ALL}"
+			else:
+				val_str = f"{color_value}{val_str}{Style.RESET_ALL}"
+		
+		return val_str
+	
 	# Scan over each key
 	for k in x.keys():
 		
 		# IF key points to dictionary, recursive call
 		if type(x[k]) == dict:
 			print(f"{get_indent(indent_level)}[{color_dict}{k}{Style.RESET_ALL}]")
-			dict_summary(x[k], indent_level=indent_level+1)
+			dict_summary(x[k], verbose=verbose, indent_level=indent_level+1)
 			
 		# Otherwise print data element stats
 		else:
@@ -177,8 +232,11 @@ def dict_summary(x:dict, indent_level:int=0, indent_char:str="   "):
 					val0 = None
 				
 				if type(val0) == list:
-					print(f"{get_indent(indent_level)}{color_val}{k}{Style.RESET_ALL} = {color_list_type}{type(val)}{Style.RESET_ALL}, {len(val)} x {color_list_type}{type(val0)}{Style.RESET_ALL}")
+					val_str = value_to_string(val, verbose, indent_level)
+					print(f"{get_indent(indent_level)}{color_name}{k}{Style.RESET_ALL} = {color_list_type}{type(val)}{Style.RESET_ALL}, {len(val)} x {color_list_type}{type(val0)} {val_str}{Style.RESET_ALL}")
 				else:
-					print(f"{get_indent(indent_level)}{color_val}{k}{Style.RESET_ALL} = {color_list_type}{type(val)}{Style.RESET_ALL}, {len(val)} x {color_type}{type(val0)}{Style.RESET_ALL}")
+					val_str = value_to_string(val, verbose, indent_level)
+					print(f"{get_indent(indent_level)}{color_name}{k}{Style.RESET_ALL} = {color_list_type}{type(val)}{Style.RESET_ALL}, {len(val)} x {color_type}{type(val0)} {val_str}{Style.RESET_ALL}")
 			else:
-				print(f"{get_indent(indent_level)}{color_val}{k}{Style.RESET_ALL} = {color_type}{type(val)}{Style.RESET_ALL}")
+				val_str = value_to_string(val, verbose, indent_level)
+				print(f"{get_indent(indent_level)}{color_name}{k}{Style.RESET_ALL} = {color_type}{type(val)}{Style.RESET_ALL} {val_str}{Style.RESET_ALL}")
