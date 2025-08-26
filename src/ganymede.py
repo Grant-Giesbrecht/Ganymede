@@ -3,6 +3,83 @@ import time
 import json
 import numpy as np
 from colorama import Fore, Style
+import os
+import sys
+import string
+
+def locate_drive(id:str, param:str="ID", filename="drive_id.txt", silence_output:bool=False):
+	''' Returns the path to a drive containing the file `filename`, 
+	which contains a line defining <param>=<id>. Used to identify a
+	removable harddrive connected to various systems without trying
+	to hardcode drive letters, expect a specific volumne name or similar.
+	'''
+	
+	file_contents = f"{param}={id}"
+	
+	def bprint(s:str, silence:bool=False):
+		if silence:
+			return
+		else:
+			print(s)
+	
+	def scan_drives_windows(filename, file_contents):
+		matching_drives = []
+		# Check all potential drive letters (A to Z)
+		for drive_letter in string.ascii_uppercase:
+			drive = f"{drive_letter}:\\"
+			if os.path.exists(drive):
+				file_path = os.path.join(drive, filename)
+				if os.path.isfile(file_path):
+					try:
+						with open(file_path, 'r', encoding='utf-8') as file:
+							for line in file:
+								if line.strip() == file_contents:
+									matching_drives.append(drive)
+									break
+					except Exception as e:
+						bprint(f"Error reading {file_path}: {e}", silence=silence_output)
+		return matching_drives
+	
+	def scan_drives_unix(filename, file_contents):
+		possible_mount_points = ['/mnt', '/media', '/Volumes']
+		matching_mounts = []
+
+		for mount_root in possible_mount_points:
+			if os.path.exists(mount_root):
+				for entry in os.listdir(mount_root):
+					mount_path = os.path.join(mount_root, entry)
+					if os.path.ismount(mount_path):
+						file_path = os.path.join(mount_path, filename)
+						if os.path.isfile(file_path):
+							try:
+								with open(file_path, 'r', encoding='utf-8') as file:
+									for line in file:
+										if line.strip() == file_contents:
+											matching_mounts.append(mount_path)
+											break
+							except Exception as e:
+								bprint(f"Error reading {file_path}: {e}", silence=silence_output)
+		return matching_mounts
+	
+	if sys.platform == "win32":
+		drives = scan_drives_windows(filename, file_contents=file_contents)
+	elif sys.platform == "darwin" or sys.platform.startswith("linux"):
+		drives = scan_drives_unix(filename, file_contents=file_contents)
+	else:
+		bprint(f"Unknown operating system: {sys.platform}", silence=silence_output)
+		return None
+	
+	if len(drives) == 0:
+		bprint(f"{Fore.RED}No matching drives found!{Style.RESET_ALL} Looking for file {Fore.YELLOW}{filename}{Style.RESET_ALL} with contents {Fore.GREEN}{file_contents}{Style.RESET_ALL}.", silence=silence_output)
+		return None
+	
+	drv = drives[0]
+	if len(drives) == 1:
+		bprint(f"{Fore.GREEN}Found matching drive!{Style.RESET_ALL} Path = {Fore.YELLOW}{drv}{Style.RESET_ALL}.", silence=silence_output)
+	else:
+		bprint(f"{Fore.RED}Found multiple matching drives!{Style.RESET_ALL} Returning first matched drive. Path = {Fore.YELLOW}{drv}{Style.RESET_ALL}.", silence=silence_output)
+	return drv
+	
 
 def lin_to_dB(x:float, use10:bool=False):
 	''' Converts a value from dB to linear units'''
